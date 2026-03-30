@@ -14,12 +14,13 @@ class FleetManager:
         self.delivered_count = 0
         self.conflicts_avoided = 0
         
-        # Init robots at random free nodes
-        free_nodes = [n for n in self.warehouse_map.graph.nodes if n not in (config.UNLOADING_ZONE_IN, config.UNLOADING_ZONE_OUT)]
-        random.shuffle(free_nodes)
-        
-        for i in range(min(config.NUM_ROBOTS, len(free_nodes))):
-            self.robots.append(RobotAgent(i, free_nodes[i]))
+        # Init robots at their designated charging stations
+        for i in range(min(config.NUM_ROBOTS, len(config.CHARGING_STATIONS))):
+            station_pos = config.CHARGING_STATIONS[i]
+            # Immediately set them to start charging or idle at their station
+            r = RobotAgent(i, station_pos)
+            r.state = RobotState.CHARGING # Let them top up initially just in case
+            self.robots.append(r)
 
     def get_path(self, robot, target_node):
         """
@@ -65,13 +66,24 @@ class FleetManager:
         for robot in self.robots:
             if robot.state == RobotState.IDLE:
                 
+                # Priority 1: Check if battery is low and we're not carrying a package
+                if robot.battery_level < config.BATTERY_THRESHOLD and not robot.has_package:
+                    # Low battery logic: return to specific charging station
+                    path = self.get_path(robot, robot.charging_station_pos)
+                    if path and len(path) > 0:
+                        if path[0] == robot.grid_pos: path.pop(0)
+                        if len(path) > 0:
+                            robot.set_path(path, state=RobotState.RETURNING)
+                            robot.speed = config.ROBOT_MAX_SPEED
+                    continue
+
                 if robot.has_package:
                     # Returning package to unloading zone IN
                     path = self.get_path(robot, config.UNLOADING_ZONE_IN)
                     if path and len(path) > 0:
                         if path[0] == robot.grid_pos: path.pop(0)
                         if len(path) > 0:
-                            robot.set_path(path, is_fetching=False)
+                            robot.set_path(path, state=RobotState.MOVING)
                             robot.speed = config.ROBOT_MAX_SPEED
                 elif robot.grid_pos == config.UNLOADING_ZONE_IN:
                     # Move out of the unloading zone
@@ -79,7 +91,7 @@ class FleetManager:
                     if path and len(path) > 0:
                         if path[0] == robot.grid_pos: path.pop(0)
                         if len(path) > 0:
-                            robot.set_path(path, is_fetching=False)
+                            robot.set_path(path, state=RobotState.MOVING)
                             robot.speed = config.ROBOT_MAX_SPEED
                 else:
                     # Going to get a package from a shelf
@@ -93,7 +105,7 @@ class FleetManager:
                     if path and len(path) > 0:
                         if path[0] == robot.grid_pos: path.pop(0)
                         if len(path) > 0:
-                            robot.set_path(path, is_fetching=True)
+                            robot.set_path(path, state=RobotState.MOVING)
                             robot.speed = config.ROBOT_BASE_SPEED
                             
     def resolve_conflicts(self):
@@ -104,7 +116,7 @@ class FleetManager:
             r.is_blocked = False
             
         for r1 in self.robots:
-            if r1.state != RobotState.MOVING or not r1.next_node:
+            if r1.state not in (RobotState.MOVING, RobotState.RETURNING) or not r1.next_node:
                 continue
                 
             needs_to_wait = False
@@ -117,10 +129,12 @@ class FleetManager:
                     needs_to_wait = True
                     
                     # Special Case: Head-on collision
-                    if r2.state == RobotState.MOVING and r2.next_node == r1.grid_pos:
+                    if r2.state in (RobotState.MOVING, RobotState.RETURNING) and r2.next_node == r1.grid_pos:
                         # Deadlock resolution: Priority rule
                         if r1.robot_id > r2.robot_id:
                             # r1 abandons its path entirely to step out of the way on the next tick
+                            # Revert to IDLE to recalculate path next frame
+                            prev_state = r1.state
                             r1.state = RobotState.IDLE
                             r1.next_node = None
                             
@@ -130,12 +144,12 @@ class FleetManager:
                             break
                             
                 # Check 2: Both robots heading to exactly the same empty cell concurrently
-                elif r2.state == RobotState.MOVING and r1.next_node == r2.next_node:
+                elif r2.state in (RobotState.MOVING, RobotState.RETURNING) and r1.next_node == r2.next_node:
                     if r1.robot_id > r2.robot_id:
                         needs_to_wait = True
                         
             # Apply block
-            if needs_to_wait and r1.state == RobotState.MOVING:
+            if needs_to_wait and r1.state in (RobotState.MOVING, RobotState.RETURNING):
                 r1.is_blocked = True
                 if not r1.was_blocked:
                     self.conflicts_avoided += 1
@@ -147,7 +161,7 @@ class FleetManager:
         
         for robot in self.robots:
             # Track delivery status edge case
-            was_carrying = robot.has_package and robot.state == RobotState.MOVING
+            was_carrying = robot.has_package and robot.state in (RobotState.MOVING, RobotState.RETURNING)
             
             robot.update()
             

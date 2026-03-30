@@ -13,11 +13,39 @@ class WarehouseMap:
         self.width = config.GRID_WIDTH
         self.height = config.GRID_HEIGHT
         
-        # Initialize a 2D grid graph
-        self.graph = nx.grid_2d_graph(self.width, self.height)
+        # Initialize a 2D grid graph, using DiGraph for 1-way streets
+        self.graph = nx.grid_2d_graph(self.width, self.height, create_using=nx.DiGraph)
         
         self.shelves = set()
         self.generate_shelves()
+        self.enforce_one_way_lanes()
+
+    def enforce_one_way_lanes(self):
+        """
+        Creates one-way entry and exit lanes for the unloading zones
+        to prevent deadlock.
+        """
+        # Arrival (entry) lane: only allow DOWN movement on x=0 for y<=3
+        for y in range(0, 4):
+            if self.graph.has_edge((0, y), (0, y+1)):
+                self.graph.remove_edge((0, y), (0, y+1)) # Remove UP
+            
+            # Prevent entering the lane from the side anywhere below y=3
+            if y < 3 and self.graph.has_edge((1, y), (0, y)):
+                self.graph.remove_edge((1, y), (0, y))
+
+        # Exit lane: only allow UP movement on x=1 for y<=3
+        for y in range(0, 4):
+            if self.graph.has_edge((1, y+1), (1, y)):
+                self.graph.remove_edge((1, y+1), (1, y)) # Remove DOWN
+                
+            # Prevent exiting the lane to the side prematurely
+            if y < 3 and self.graph.has_edge((1, y), (2, y)):
+                self.graph.remove_edge((1, y), (2, y))
+                
+        # Link IN to OUT specifically (only 1-way)
+        if self.graph.has_edge(config.UNLOADING_ZONE_OUT, config.UNLOADING_ZONE_IN):
+            self.graph.remove_edge(config.UNLOADING_ZONE_OUT, config.UNLOADING_ZONE_IN)
         
     def generate_shelves(self):
         """

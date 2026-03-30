@@ -29,20 +29,30 @@ class WarehouseVisualizer:
             i_resolution=self.wm.width, 
             j_resolution=self.wm.height
         )
-        self.plotter.add_mesh(ground, color='#222222', show_edges=True, edge_color='#444444')
+        self.plotter.add_mesh(ground, color=config.COLOR_GROUND, show_edges=True, edge_color=config.COLOR_GROUND_EDGE)
         
         # 2. Unloading Zones
         unload_in = pv.Cube(
             center=(config.UNLOADING_ZONE_IN[0], config.UNLOADING_ZONE_IN[1], -0.05), 
             x_length=1.0, y_length=1.0, z_length=0.1
         )
-        self.plotter.add_mesh(unload_in, color='#ff0000') # Red for Drop-off IN
+        self.plotter.add_mesh(unload_in, color=config.COLOR_UNLOAD_IN) # Red for Drop-off IN
         
         unload_out = pv.Cube(
             center=(config.UNLOADING_ZONE_OUT[0], config.UNLOADING_ZONE_OUT[1], -0.05), 
             x_length=1.0, y_length=1.0, z_length=0.1
         )
-        self.plotter.add_mesh(unload_out, color='#00aaff') # Light blue for Exit OUT
+        self.plotter.add_mesh(unload_out, color=config.COLOR_UNLOAD_OUT) # Light blue for Exit OUT
+
+        # 2.5 Charging Stations
+        charge_pad_mesh = pv.Cube(
+            center=(0, 0, -0.05), 
+            x_length=1.0, y_length=1.0, z_length=0.1
+        )
+        for pad_pos in config.CHARGING_STATIONS:
+            moved_pad = charge_pad_mesh.copy()
+            moved_pad.translate((pad_pos[0], pad_pos[1], 0), inplace=True)
+            self.plotter.add_mesh(moved_pad, color=config.COLOR_CHARGING_PAD)
 
         # 3. Static Static Shelves
         shelf_mesh = pv.Cube(center=(0, 0, config.SHELF_SIZE/2), x_length=config.SHELF_SIZE, y_length=config.SHELF_SIZE, z_length=config.SHELF_SIZE)
@@ -67,7 +77,7 @@ class WarehouseVisualizer:
         self.text_actor = self.plotter.add_text(
             "Delivered: 0\nConflicts Avoided: 0", 
             position='upper_left', 
-            color='white', 
+            color='black', 
             font_size=12
         )
             
@@ -102,7 +112,7 @@ class WarehouseVisualizer:
         self.text_actor = self.plotter.add_text(
             f"Delivered: {self.fm.delivered_count}\nConflicts Avoided: {self.fm.conflicts_avoided}", 
             position='upper_left', 
-            color='white', 
+            color='black', 
             font_size=12
         )
         

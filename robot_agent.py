@@ -5,6 +5,8 @@ class RobotState:
     IDLE = 0
     MOVING = 1
     LOADING = 2
+    CHARGING = 3
+    RETURNING = 4
 
 
 class RobotAgent:
@@ -14,6 +16,10 @@ class RobotAgent:
     """
     def __init__(self, robot_id, start_pos):
         self.robot_id = robot_id
+        
+        # Battery setup
+        self.charging_station_pos = start_pos
+        self.battery_level = config.BATTERY_MAX
         
         # Position in continuous 3D space: (x, y, z)
         self.pos = np.array([float(start_pos[0]), float(start_pos[1]), 0.0])
@@ -36,17 +42,39 @@ class RobotAgent:
         # Trailing path for visual aesthetics
         self.trail = []
 
-    def set_path(self, path, is_fetching=True):
+    def set_path(self, path, state=RobotState.MOVING):
         """Assigns a new path to follow"""
         self.path = path
         if len(self.path) > 0:
-            self.state = RobotState.MOVING
+            self.state = state
             self.next_node = self.path.pop(0)
-            self.color = config.COLOR_ROBOT_FETCH if is_fetching else config.COLOR_ROBOT_CARRY
+
+    def update_color_aesthetic(self):
+        """Dynamic color updates based on state and battery."""
+        if self.state == RobotState.CHARGING:
+            self.color = config.COLOR_ROBOT_CHARGING
+        elif self.state == RobotState.RETURNING:
+            self.color = config.COLOR_ROBOT_LOW_BATT
+        elif self.state == RobotState.IDLE:
+            self.color = config.COLOR_ROBOT_IDLE
+        else: # MOVING or LOADING
+            if self.has_package:
+                self.color = config.COLOR_ROBOT_CARRY
+            else:
+                self.color = config.COLOR_ROBOT_FETCH
 
     def update(self):
         """Tick function applied per frame to update position and state"""
-        if self.state == RobotState.IDLE:
+        if self.state == RobotState.CHARGING:
+            self.battery_level += config.BATTERY_CHARGE_RATE
+            if self.battery_level >= config.BATTERY_MAX:
+                self.battery_level = config.BATTERY_MAX
+                self.state = RobotState.IDLE
+            self.update_color_aesthetic()
+            return
+            
+        elif self.state == RobotState.IDLE:
+            self.update_color_aesthetic()
             return
             
         elif self.state == RobotState.LOADING:
@@ -54,23 +82,29 @@ class RobotAgent:
             if self.loading_timer <= 0:
                 self.has_package = True
                 self.state = RobotState.IDLE
-                self.color = config.COLOR_ROBOT_CARRY
+            self.update_color_aesthetic()
             return
             
-        elif self.state == RobotState.MOVING:
+        # Both MOVING and RETURNING behave similarly for movement
+        elif self.state in (RobotState.MOVING, RobotState.RETURNING):
             if self.is_blocked:
-                # Fleet manager requested agent to wait to avoid collision
+                self.update_color_aesthetic()
                 return
                 
             if self.next_node is None:
+                self.update_color_aesthetic()
                 return
+                
+            # Deplete battery while moving
+            self.battery_level -= config.BATTERY_DEPLETION_RATE
+            if self.battery_level < 0:
+                self.battery_level = 0
                 
             # Move towards next_node continuously
             target_pos = np.array([float(self.next_node[0]), float(self.next_node[1]), 0.0])
             direction = target_pos - self.pos
             distance = np.linalg.norm(direction)
             
-            # Use dynamic speed instead of static global speed
             speed_per_tick = self.speed / config.TICK_RATE
             
             if distance <= speed_per_tick:
@@ -87,11 +121,14 @@ class RobotAgent:
                     self.next_node = self.path.pop(0)
                 else:
                     self.next_node = None
-                    if not self.has_package:
+                    # End of path logic
+                    if self.state == RobotState.RETURNING:
+                        # Reached charging station
+                        self.state = RobotState.CHARGING
+                    elif not self.has_package:
                         if self.grid_pos == config.UNLOADING_ZONE_OUT:
                             # Reached exit of unloading zone
                             self.state = RobotState.IDLE
-                            self.color = config.COLOR_ROBOT_IDLE
                         else:
                             # Reached shelf
                             self.state = RobotState.LOADING
@@ -100,7 +137,8 @@ class RobotAgent:
                         # Reached unloading zone
                         self.has_package = False
                         self.state = RobotState.IDLE
-                        self.color = config.COLOR_ROBOT_IDLE
             else:
                 # Intermediate step
                 self.pos += (direction / distance) * speed_per_tick
+                
+            self.update_color_aesthetic()
