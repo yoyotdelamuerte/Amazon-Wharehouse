@@ -22,7 +22,7 @@ class FleetManager:
             r.state = RobotState.CHARGING # Let them top up initially just in case
             self.robots.append(r)
 
-    def get_path(self, robot, target_node):
+    def get_path(self, robot, target_node, use_peripheral_weight=False):
         """
         Gets A* shortest path avoiding nodes currently occupied by other robots.
         Falls back to base graph if completely trapped.
@@ -39,13 +39,26 @@ class FleetManager:
             
         view = nx.subgraph_view(self.warehouse_map.graph, filter_node=valid_node)
         
+        def return_weight(u, v, d):
+            # Peripheral highway definition
+            target_y = config.GRID_HEIGHT - 2 # y=18
+            max_x = config.GRID_WIDTH - 1     # x=19
+            # If both nodes of the edge are on the perimeter, weight is 1. Otherwise 5.
+            if (u[0] == 0 or u[0] == max_x or u[1] == 0 or u[1] == target_y) and \
+               (v[0] == 0 or v[0] == max_x or v[1] == 0 or v[1] == target_y):
+                return 1
+            return 5
+            
+        weight_func = return_weight if use_peripheral_weight else None
+        
         # Try finding path around other moving agents
         try:
             path = nx.astar_path(
                 view, 
                 robot.grid_pos, 
                 target_node, 
-                heuristic=lambda a, b: abs(a[0] - b[0]) + abs(a[1] - b[1])
+                heuristic=lambda a, b: abs(a[0] - b[0]) + abs(a[1] - b[1]),
+                weight=weight_func
             )
             return path
         except nx.NetworkXNoPath:
@@ -55,7 +68,8 @@ class FleetManager:
                     self.warehouse_map.graph, 
                     robot.grid_pos, 
                     target_node, 
-                    heuristic=lambda a, b: abs(a[0] - b[0]) + abs(a[1] - b[1])
+                    heuristic=lambda a, b: abs(a[0] - b[0]) + abs(a[1] - b[1]),
+                    weight=weight_func
                 )
                 return path
             except nx.NetworkXNoPath:
@@ -68,8 +82,8 @@ class FleetManager:
                 
                 # Priority 1: Check if battery is low and we're not carrying a package
                 if robot.battery_level < config.BATTERY_THRESHOLD and not robot.has_package:
-                    # Low battery logic: return to specific charging station
-                    path = self.get_path(robot, robot.charging_station_pos)
+                    # Low battery logic: return to specific charging station via perimeter
+                    path = self.get_path(robot, robot.charging_station_pos, use_peripheral_weight=True)
                     if path and len(path) > 0:
                         if path[0] == robot.grid_pos: path.pop(0)
                         if len(path) > 0:

@@ -19,6 +19,19 @@ class WarehouseMap:
         self.shelves = set()
         self.generate_shelves()
         self.enforce_one_way_lanes()
+        self.create_charging_bays()
+
+    def create_charging_bays(self):
+        """
+        Removes horizontal edges on the top row (y=19) to turn charging stations
+        into isolated parking bays natively bypassed by the A* algorithm.
+        """
+        top_y = self.height - 1
+        for x in range(self.width - 1):
+            if self.graph.has_edge((x, top_y), (x+1, top_y)):
+                self.graph.remove_edge((x, top_y), (x+1, top_y))
+            if self.graph.has_edge((x+1, top_y), (x, top_y)):
+                self.graph.remove_edge((x+1, top_y), (x, top_y))
 
     def enforce_one_way_lanes(self):
         """
