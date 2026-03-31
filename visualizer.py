@@ -7,12 +7,12 @@ class WarehouseVisualizer:
     Renders the warehouse 3D environment using PyVista.
     Updates the meshes corresponding to agents dynamically.
     """
-    def __init__(self, warehouse_map, fleet_manager):
+    def __init__(self, warehouse_map, fleet_manager, plotter):
         self.wm = warehouse_map
         self.fm = fleet_manager
         
         pv.set_plot_theme(config.THEME)
-        self.plotter = pv.Plotter()
+        self.plotter = plotter
         
         self.robot_actors = []
         self.trail_actors = [None] * config.NUM_ROBOTS
@@ -54,14 +54,21 @@ class WarehouseVisualizer:
             moved_pad.translate((pad_pos[0], pad_pos[1], 0), inplace=True)
             self.plotter.add_mesh(moved_pad, color=config.COLOR_CHARGING_PAD)
 
-        # 3. Static Static Shelves
+        # 3. Static Shelves
         shelf_mesh = pv.Cube(center=(0, 0, config.SHELF_SIZE/2), x_length=config.SHELF_SIZE, y_length=config.SHELF_SIZE, z_length=config.SHELF_SIZE)
         for shelf_pos in self.wm.shelves:
             moved_shelf = shelf_mesh.copy()
             moved_shelf.translate((shelf_pos[0], shelf_pos[1], 0), inplace=True)
+            
+            cat = self.wm.shelf_categories.get(shelf_pos, config.CATEGORY_LIGHT)
+            shelf_color = config.COLOR_SHELF
+            if cat == config.CATEGORY_LIGHT: shelf_color = '#A5D6A7' # Light Green
+            elif cat == config.CATEGORY_MEDIUM: shelf_color = '#FFCC80' # Orange
+            elif cat == config.CATEGORY_HEAVY: shelf_color = '#B0BEC5' # Heavy metal
+            
             self.plotter.add_mesh(
                 moved_shelf, 
-                color=config.COLOR_SHELF, 
+                color=shelf_color, 
                 opacity=config.ALPHA_SHELF,
                 show_edges=True
             )
@@ -78,15 +85,7 @@ class WarehouseVisualizer:
             actor.position = (robot.pos[0], robot.pos[1], 0)
             self.robot_actors.append(actor)
             
-        # 5. UI Overlays
-        self.text_actor = self.plotter.add_text(
-            "Delivered: 0\nConflicts Avoided: 0", 
-            position='upper_left', 
-            color='black', 
-            font_size=12
-        )
-            
-        # 6. Default Camera Angle (Top-Down 2D)
+        # 5. UI Overlays (Removed since we have Qt dash windows now)
         self.plotter.view_xy()
         self.plotter.enable_parallel_projection()
         self.plotter.enable_2d_style()
@@ -114,13 +113,4 @@ class WarehouseVisualizer:
                 except ValueError:
                     pass
                 
-        # Update metrics overlay
-        self.plotter.remove_actor(self.text_actor)
-        self.text_actor = self.plotter.add_text(
-            f"Delivered: {self.fm.delivered_count}\nConflicts Avoided: {self.fm.conflicts_avoided}", 
-            position='upper_left', 
-            color='black', 
-            font_size=12
-        )
-        
-        # We don't need to call self.plotter.update() manually if using add_timer_event
+        # We rely on Qt QTimer instead of PyVista timer loop.

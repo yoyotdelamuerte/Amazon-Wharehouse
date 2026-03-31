@@ -17,6 +17,7 @@ class WarehouseMap:
         self.graph = nx.grid_2d_graph(self.width, self.height, create_using=nx.DiGraph)
         
         self.shelves = set()
+        self.shelf_categories = {}
         self.generate_shelves()
         self.enforce_one_way_lanes()
         self.create_charging_bays()
@@ -82,8 +83,10 @@ class WarehouseMap:
         if config.UNLOADING_ZONE_OUT in self.shelves:
             self.shelves.remove(config.UNLOADING_ZONE_OUT)
             
-        # Remove shelf nodes from the navigation graph (they act as obstacles)
+        # Assign categories to shelves and remove nodes from nav graph
+        categories = [config.CATEGORY_LIGHT, config.CATEGORY_MEDIUM, config.CATEGORY_HEAVY]
         for shelf in self.shelves:
+            self.shelf_categories[shelf] = random.choice(categories)
             if shelf in self.graph:
                 self.graph.remove_node(shelf)
                 
