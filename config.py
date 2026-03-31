@@ -64,3 +64,22 @@ TRAIL_LENGTH = 15            # Number of points in the trail
 # Dimensions
 ROBOT_SIZE = 0.5
 SHELF_SIZE = 0.8
+
+# ==========================================
+# 4. Order & Cargo System
+# ==========================================
+ROBOT_MAX_CAPACITY = 10     # Maximum total weight a robot can carry at once
+ORDER_SPAWN_CHANCE = 0.02   # Chance per tick to spawn a new order
+ORDER_MAX_ITEMS = 3         # Max number of distinct shelf pickups per order
+ORDER_DEADLINE_TICKS = TICK_RATE * 30 # 30 seconds to deliver
+
+# Shelf Categories
+CATEGORY_LIGHT = "LIGHT"
+CATEGORY_MEDIUM = "MEDIUM"
+CATEGORY_HEAVY = "HEAVY"
+
+WEIGHT_MAPPING = {
+    CATEGORY_LIGHT: 1,
+    CATEGORY_MEDIUM: 3,
+    CATEGORY_HEAVY: 5
+}
