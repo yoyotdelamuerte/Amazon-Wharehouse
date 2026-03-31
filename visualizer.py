@@ -81,9 +81,10 @@ class WarehouseVisualizer:
             font_size=12
         )
             
-        # 6. Default Camera Angle
-        self.plotter.camera.position = (self.wm.width/2, -self.wm.height*0.2, self.wm.height*1.5)
-        self.plotter.camera.focal_point = (self.wm.width/2, self.wm.height/2, 0)
+        # 6. Default Camera Angle (Top-Down 2D)
+        self.plotter.view_xy()
+        self.plotter.enable_parallel_projection()
+        self.plotter.enable_2d_style()
         
     def render_frame(self):
         """Called every tick to update the visuals."""
