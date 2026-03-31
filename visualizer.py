@@ -67,7 +67,12 @@ class WarehouseVisualizer:
             )
             
         # 4. Robots
-        robot_proto = pv.Cube(center=(0, 0, config.ROBOT_SIZE/2), x_length=config.ROBOT_SIZE, y_length=config.ROBOT_SIZE, z_length=config.ROBOT_SIZE)
+        main_body = pv.Cube(center=(0, 0, config.ROBOT_SIZE/2), x_length=config.ROBOT_SIZE, y_length=config.ROBOT_SIZE, z_length=config.ROBOT_SIZE)
+        nose_size = config.ROBOT_SIZE * 0.4
+        nose = pv.Cube(center=(config.ROBOT_SIZE/2 + nose_size/2, 0, config.ROBOT_SIZE/2), 
+                       x_length=nose_size, y_length=nose_size, z_length=config.ROBOT_SIZE*0.8)
+        robot_proto = main_body + nose
+        
         for robot in self.fm.robots:
             actor = self.plotter.add_mesh(robot_proto.copy(), color=robot.color)
             actor.position = (robot.pos[0], robot.pos[1], 0)
@@ -89,9 +94,10 @@ class WarehouseVisualizer:
     def render_frame(self):
         """Called every tick to update the visuals."""
         for i, robot in enumerate(self.fm.robots):
-            # Update robot translation and active color state
+            # Update robot translation, rotation and active color state
             actor = self.robot_actors[i]
             actor.position = (robot.pos[0], robot.pos[1], 0)
+            actor.orientation = (0, 0, robot.facing_angle)
             actor.prop.color = pv.Color(robot.color)
             
             # Update physical trail

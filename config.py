@@ -21,9 +21,9 @@ CHARGING_STATIONS = [(2, 19), (6, 19), (10, 19), (14, 19), (18, 19)]
 # 2. Robot Fleet Settings
 # ==========================================
 NUM_ROBOTS = 5           # Exact number dictated by charging stations
-ROBOT_BASE_SPEED = 3.0   # Movement speed in grid units per second (visual)
-ROBOT_MAX_SPEED = 6.0    # Maximum speed AI can set
-ROBOT_MIN_SPEED = 1.0    # Minimum speed AI can set
+ROBOT_BASE_SPEED = 6.0   # Movement speed in grid units per second (visual)
+ROBOT_MAX_SPEED = 12.0   # Maximum speed AI can set
+ROBOT_MIN_SPEED = 2.0    # Minimum speed AI can set
 TICK_RATE = 60           # Simulation logic ticks per second
 
 # Battery Settings

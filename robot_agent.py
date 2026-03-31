@@ -26,6 +26,7 @@ class RobotAgent:
         self.grid_pos = start_pos
         self.next_node = None
         
+        self.facing_angle = 0.0
         self.speed = config.ROBOT_BASE_SPEED
         
         self.state = RobotState.IDLE
@@ -104,6 +105,8 @@ class RobotAgent:
             target_pos = np.array([float(self.next_node[0]), float(self.next_node[1]), 0.0])
             direction = target_pos - self.pos
             distance = np.linalg.norm(direction)
+            if distance > 0.001:
+                self.facing_angle = np.degrees(np.arctan2(direction[1], direction[0]))
             
             speed_per_tick = self.speed / config.TICK_RATE
             
