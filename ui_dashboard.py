@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QWidget, QTableWidget, QTableWidgetItem, QHeaderView
+from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QWidget, QTableWidget, QTableWidgetItem, QHeaderView, QSlider, QCheckBox, QHBoxLayout
+from PyQt5.QtCore import Qt
 from pyvistaqt import QtInteractor
 import pyvista as pv
 import config
@@ -106,3 +107,75 @@ class OrdersWindow(QMainWindow):
                 # Red text for late orders
                 # timer_item.setForeground(QColor(255, 0, 0)) - Optional
             self.table.setItem(i, 4, timer_item)
+
+class ControlWindow(QMainWindow):
+    def __init__(self, fleet_manager):
+        super().__init__()
+        self.fm = fleet_manager
+        self.setWindowTitle("Control Panel")
+        self.resize(300, 250)
+        
+        layout = QVBoxLayout()
+        
+        self.label_spawn = QLabel(f"Génération de Commandes: {int(config.ORDER_SPAWN_CHANCE * 100)}%")
+        self.slider_spawn = QSlider(Qt.Horizontal)
+        self.slider_spawn.setRange(0, 100)
+        self.slider_spawn.setValue(int(config.ORDER_SPAWN_CHANCE * 100))
+        self.slider_spawn.valueChanged.connect(self.on_spawn_changed)
+        
+        layout.addWidget(self.label_spawn)
+        layout.addWidget(self.slider_spawn)
+        
+        layout.addSpacing(15)
+        
+        self.check_auto = QCheckBox("Gestion Automatique de la Flotte")
+        self.check_auto.setChecked(True)
+        self.check_auto.stateChanged.connect(self.on_auto_changed)
+        layout.addWidget(self.check_auto)
+        
+        layout.addSpacing(10)
+        
+        self.label_robots = QLabel(f"Robots Actifs: {config.NUM_ROBOTS} (Auto)")
+        self.slider_robots = QSlider(Qt.Horizontal)
+        self.slider_robots.setRange(0, config.NUM_ROBOTS)
+        self.slider_robots.setValue(config.NUM_ROBOTS)
+        self.slider_robots.setEnabled(False)
+        self.slider_robots.valueChanged.connect(self.on_robots_changed)
+        
+        layout.addWidget(self.label_robots)
+        layout.addWidget(self.slider_robots)
+        
+        layout.addStretch()
+        
+        container = QWidget()
+        container.setLayout(layout)
+        self.setCentralWidget(container)
+        
+        self.fm.auto_mode = True
+        self.fm.active_limit = config.NUM_ROBOTS
+
+    def on_spawn_changed(self, value):
+        chance = value / 100.0
+        self.fm.order_manager.spawn_chance = chance
+        self.label_spawn.setText(f"Génération de Commandes: {value}%")
+        
+    def on_auto_changed(self, state):
+        is_auto = state == Qt.Checked
+        self.fm.auto_mode = is_auto
+        self.slider_robots.setEnabled(not is_auto)
+        if not is_auto:
+            self.fm.active_limit = self.slider_robots.value()
+            self.label_robots.setText(f"Robots Actifs: {self.fm.active_limit} (Fixe)")
+        
+    def on_robots_changed(self, value):
+        if not self.fm.auto_mode:
+            self.fm.active_limit = value
+            self.label_robots.setText(f"Robots Actifs: {value} (Fixe)")
+
+    def update_controls(self):
+        if self.fm.auto_mode:
+            self.slider_robots.blockSignals(True)
+            self.slider_robots.setValue(self.fm.active_limit)
+            self.slider_robots.blockSignals(False)
+            self.label_robots.setText(f"Robots Actifs: {self.fm.active_limit} (Auto)")
+

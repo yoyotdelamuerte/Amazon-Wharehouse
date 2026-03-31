@@ -5,7 +5,7 @@ from PyQt5.QtCore import QTimer
 from warehouse_map import WarehouseMap
 from fleet_manager import FleetManager
 from visualizer import WarehouseVisualizer
-from ui_dashboard import MapWindow, StatsWindow, OrdersWindow
+from ui_dashboard import MapWindow, StatsWindow, OrdersWindow, ControlWindow
 import config
 
 def main():
@@ -39,11 +39,17 @@ def main():
     orders_win.show()
     orders_win.move(950, 560)
     
+    # 4. Control Panel
+    control_win = ControlWindow(fm)
+    control_win.show()
+    control_win.move(100, 750)
+    
     def simulation_tick():
         fm.update()
         viz.render_frame()
         stats_win.update_stats()
         orders_win.update_orders()
+        control_win.update_controls()
         
     delay = int(1000 / config.TICK_RATE)
     

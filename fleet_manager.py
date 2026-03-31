@@ -11,6 +11,8 @@ class FleetManager:
         self.robots = []
         self.delivered_count = 0
         self.conflicts_avoided = 0
+        self.auto_mode = True
+        self.active_limit = config.NUM_ROBOTS
         
         for i in range(min(config.NUM_ROBOTS, len(config.CHARGING_STATIONS))):
             station_pos = config.CHARGING_STATIONS[i]
@@ -58,17 +60,30 @@ class FleetManager:
     def assign_missions(self):
         pending_tasks = self.order_manager.get_pending_tasks()
         
-        for robot in self.robots:
+        if getattr(self, 'auto_mode', True):
+            required_robots = min(config.NUM_ROBOTS, (len(pending_tasks) + 1) // 2)
+            # Ensure at least 1 robot is active if there are tasks, 0 if none
+            self.active_limit = required_robots if pending_tasks else 0
+        
+        for i, robot in enumerate(self.robots):
+            is_allowed_to_work = i < getattr(self, 'active_limit', config.NUM_ROBOTS)
+            
             if robot.state == RobotState.IDLE:
                 
-                # Check low battery
-                if robot.battery_level < config.BATTERY_THRESHOLD and not robot.inventory and not robot.assigned_tasks:
-                    path = self.get_path(robot, robot.charging_station_pos, use_peripheral_weight=True)
-                    if path and len(path) > 0:
-                        if path[0] == robot.grid_pos: path.pop(0)
-                        if len(path) > 0:
-                            robot.set_path(path, state=RobotState.RETURNING)
-                            robot.speed = config.ROBOT_MAX_SPEED
+                # Check low battery or forced rest
+                needs_charge = robot.battery_level < config.BATTERY_THRESHOLD
+                should_rest = needs_charge or not is_allowed_to_work
+                
+                if should_rest and not robot.inventory and not robot.assigned_tasks:
+                    if robot.grid_pos != robot.charging_station_pos:
+                        path = self.get_path(robot, robot.charging_station_pos, use_peripheral_weight=True)
+                        if path and len(path) > 0:
+                            if path[0] == robot.grid_pos: path.pop(0)
+                            if len(path) > 0:
+                                robot.set_path(path, state=RobotState.RETURNING)
+                                robot.speed = config.ROBOT_MAX_SPEED
+                    elif needs_charge:
+                        robot.state = RobotState.CHARGING
                     continue
 
                 if robot.grid_pos == config.UNLOADING_ZONE_IN:

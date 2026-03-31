@@ -39,6 +39,7 @@ class OrderManager:
         self.completed_count = 0
         self.late_count = 0
         self.tick_count = 0
+        self.spawn_chance = config.ORDER_SPAWN_CHANCE
         
     def generate_random_order(self):
         order = Order()
@@ -64,7 +65,7 @@ class OrderManager:
     def update(self):
         self.tick_count += 1
         
-        if random.random() < config.ORDER_SPAWN_CHANCE:
+        if random.random() < self.spawn_chance:
             self.generate_random_order()
             
         # Update timers and check completion
