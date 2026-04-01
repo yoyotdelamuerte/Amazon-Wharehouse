@@ -32,9 +32,14 @@ class RobotAgent:
         self.state = RobotState.IDLE
         self.color = config.COLOR_ROBOT_IDLE
         self.path = []
-        self.has_package = False
+        
+        self.inventory = []
+        self.assigned_tasks = []
+        self.current_weight = 0
+        
         self.is_blocked = False
         self.was_blocked = False
+        self.blocked_timer = 0
         
         # simulated time to load/unload a package
         self.loading_timer = 0
@@ -59,7 +64,7 @@ class RobotAgent:
         elif self.state == RobotState.IDLE:
             self.color = config.COLOR_ROBOT_IDLE
         else: # MOVING or LOADING
-            if self.has_package:
+            if self.current_weight > 0:
                 self.color = config.COLOR_ROBOT_CARRY
             else:
                 self.color = config.COLOR_ROBOT_FETCH
@@ -81,7 +86,11 @@ class RobotAgent:
         elif self.state == RobotState.LOADING:
             self.loading_timer -= 1
             if self.loading_timer <= 0:
-                self.has_package = True
+                if self.assigned_tasks:
+                    task = self.assigned_tasks.pop(0)
+                    task.picked_up = True
+                    self.inventory.append(task)
+                    self.current_weight += task.weight
                 self.state = RobotState.IDLE
             self.update_color_aesthetic()
             return
@@ -89,8 +98,16 @@ class RobotAgent:
         # Both MOVING and RETURNING behave similarly for movement
         elif self.state in (RobotState.MOVING, RobotState.RETURNING):
             if self.is_blocked:
+                self.blocked_timer += 1
+                if self.blocked_timer > 20:
+                    self.path.clear()
+                    self.next_node = None
+                    self.blocked_timer = 0
+                    self.state = RobotState.IDLE
                 self.update_color_aesthetic()
                 return
+            else:
+                self.blocked_timer = 0
                 
             if self.next_node is None:
                 self.update_color_aesthetic()
@@ -128,17 +145,12 @@ class RobotAgent:
                     if self.state == RobotState.RETURNING:
                         # Reached charging station
                         self.state = RobotState.CHARGING
-                    elif not self.has_package:
-                        if self.grid_pos == config.UNLOADING_ZONE_OUT:
-                            # Reached exit of unloading zone
-                            self.state = RobotState.IDLE
-                        else:
-                            # Reached shelf
-                            self.state = RobotState.LOADING
-                            self.loading_timer = self.loading_duration
+                    elif any(self.grid_pos == drop['in'] for drop in config.MAP_DROPS):
+                        # Reached unloading zone. 
+                        # Dropping off is handled by FleetManager so it can track order completions.
+                        self.state = RobotState.IDLE
                     else:
-                        # Reached unloading zone
-                        self.has_package = False
+                        # Reached exit of unloading zone or intermediate stop
                         self.state = RobotState.IDLE
             else:
                 # Intermediate step

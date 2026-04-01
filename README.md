@@ -1,18 +1,21 @@
-# 3D Automated Warehouse Simulation
+# 3D Automated Warehouse Control Center
 
 ## Description
-A visually striking, highly functional 3D Python simulation of an automated warehouse. A fleet of intelligent robots dynamically navigates a grid system to fetch packages, deliver them to a central processing station, and manage their own power cycles, all visualized in real-time using PyVista.
+A visually striking, highly functional Python simulation of an automated logistics warehouse. A fleet of intelligent robots dynamically navigates an interconnected grid system to fetch grouped packages based on order priority, deliver them to multiple central drop-off stations, and manage their own power cycles intelligently.
+
+The simulation has been completely overhauled to include a robust **PyQt5 Multi-Window Dashboard**, allowing users to dynamically sketch warehouse layouts in a Map Editor before launching the high-performance **PyVista** 3D visualization.
 
 ## Key Features
-- **Advanced 3D PyVista Environment:** Sleek, high-performance rendering of the warehouse floor, obstacles, robot agents, and their physical trails.
-- **Battery & Docking Mechanics:** Robots have individual battery limits. When running low, they abandon their fetch orders and safely route back to their exclusively assigned "charging bay" automatically. 
-- **Anti-Congestion "1-Way" Routing:** The unloading zone is constrained by a strict 1-way entry queue and a separate exit tunnel implemented via Directed Graphs (`nx.DiGraph`). This entirely eliminates traffic bottlenecks.
-- **Smart Périphérique Routing:** Robots that are empty and returning to base intuitively use an outer "highway" (the edge of the grid `y=18`) to speed back to their base. Because their charging stations are defined as isolated cul-de-sac bays, robots avoid driving over one another while charging.
-- **A* Collision Avoidance:** Agents use NetworkX graph sub-views to forecast collisions tick-by-tick and sidestep blocked cells dynamically.
+- **Interactive Map Editor:** Draw your own warehouse layout using an intuitive 2D grid editor. Place modular shelving units, specialized loading docks (IN/OUT), and robot charging bays. The built-in validator ensures the warehouse is structurally sound and accessible before launch.
+- **Deep Fleet Logistics (Cooperative A*):** Robots utilize an advanced multi-agent pathfinding algorithm featuring "Soft-Reservation". Robots algorithmically avoid each others' predicted future paths, virtually eliminating head-to-head collisions and traffic jams.
+- **Patience-Based Deadlock Resolver:** In unnavigable chokepoints, robots that are blocked will yield to higher-priority peers. If trapped for too long, a "patience" timer triggers a complete path recalculation, ensuring complex 3-way deadlocks resolve themselves smoothly.
+- **Dynamic Order Management System:** Features realistic item requests with varying weights (Light, Medium, Heavy) and processing priorities. The system orchestrates order fulfillments, tracks latencies, and dynamically assigns tasks to empty or partially-loaded robots.
+- **Sleek 2D Top-Down View:** The environment is rendered in a locked top-down viewing angle with parallel projection. It guarantees perfect overview of the entire warehouse floor while retaining 3D hardware-accelerated rendering benefits via PyVista.
+- **Smart Perimeter Routing:** Robots that are empty and returning to base intuitively use an outer "highway" to speed back home without clogging critical aisles.
 
 ## Installation
 
-Ensure you have a modern Python environment active, then install the dependencies:
+Ensure you have Python 3.8+ active, then install the dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -20,15 +23,20 @@ pip install -r requirements.txt
 
 ## Usage
 
-Simply run the main simulation file. Close the 3D window to exit the application.
+Simply run the main entry point to spawn the Map Editor and Dashboard windows.
 
 ```bash
 python main.py
 ```
 
+### Workflow
+1. **Design Map:** Upon launch, use the grid editor to paint Shelves (Left Click), Loading Docks (Middle Click), and Chargers (Right Click).
+2. **Launch System:** Once your map is valid, click "Launch Simulation".
+3. **Monitor Logistics:** The Order Dashboard and 3D Visualizer will boot up, seamlessly processing incoming orders until you close the application.
+
 ## Configuration
-The entire environment is customizable. Open `config.py` to adjust:
-- Grid size and the number of obstacles.
-- `BATTERY_DEPLETION_RATE` and threshold triggers.
-- Robot counts and movement speed settings.
-- Color themes (switch between dark neon vibes and bright industrial schemes).
+While the warehouse layout is fully dynamic via the editor, engine logic is customizable. Open `config.py` to adjust:
+- **TICK_RATE** and physical robot movement speeds.
+- Agent properties like `BATTERY_DEPLETION_RATE`, maximum carrying capacity, and charging thresholds.
+- Order spawn rates and generation probabilities.
+- UI Color themes and object aesthetic definitions.

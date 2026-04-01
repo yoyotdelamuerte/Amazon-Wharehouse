@@ -11,16 +11,14 @@ GRID_HEIGHT = 20
 NUM_SHELVES = 40  # Number of shelves to place as obstacles
 
 # Locations
-UNLOADING_ZONE_IN = (0, 0)   # Where robots drop off packages
-UNLOADING_ZONE_OUT = (1, 0)  # Where robots exit to avoid blocking the entrance
-
-# Charging Zones (5 spots along the top wall)
-CHARGING_STATIONS = [(2, 19), (6, 19), (10, 19), (14, 19), (18, 19)]
+MAP_SHELVES = {}
+MAP_DROPS = []
+MAP_CHARGERS = []
 
 # ==========================================
 # 2. Robot Fleet Settings
 # ==========================================
-NUM_ROBOTS = 5           # Exact number dictated by charging stations
+NUM_ROBOTS = 5           # Dynamically set based on MAP_CHARGERS length
 ROBOT_BASE_SPEED = 6.0   # Movement speed in grid units per second (visual)
 ROBOT_MAX_SPEED = 12.0   # Maximum speed AI can set
 ROBOT_MIN_SPEED = 2.0    # Minimum speed AI can set
@@ -64,3 +62,22 @@ TRAIL_LENGTH = 15            # Number of points in the trail
 # Dimensions
 ROBOT_SIZE = 0.5
 SHELF_SIZE = 0.8
+
+# ==========================================
+# 4. Order & Cargo System
+# ==========================================
+ROBOT_MAX_CAPACITY = 10     # Maximum total weight a robot can carry at once
+ORDER_SPAWN_CHANCE = 0.02   # Chance per tick to spawn a new order
+ORDER_MAX_ITEMS = 3         # Max number of distinct shelf pickups per order
+ORDER_DEADLINE_TICKS = TICK_RATE * 30 # 30 seconds to deliver
+
+# Shelf Categories
+CATEGORY_LIGHT = "LIGHT"
+CATEGORY_MEDIUM = "MEDIUM"
+CATEGORY_HEAVY = "HEAVY"
+
+WEIGHT_MAPPING = {
+    CATEGORY_LIGHT: 1,
+    CATEGORY_MEDIUM: 3,
+    CATEGORY_HEAVY: 5
+}
