@@ -22,11 +22,17 @@ class FleetManager:
 
     def get_path(self, robot, target_node, use_peripheral_weight=False):
         occupied = set()
+        high_cost_nodes = set()
+        
         for r in self.robots:
             if r.robot_id != robot.robot_id:
                 occupied.add(r.grid_pos)
                 if r.next_node:
                     occupied.add(r.next_node)
+                # Cooperative A*: Treat future paths of higher priority robots as soft obstacles
+                if r.robot_id < robot.robot_id:
+                    for node in r.path:
+                        high_cost_nodes.add(node)
                     
         def valid_node(n):
             return n not in occupied or n == target_node or n == robot.grid_pos
@@ -34,14 +40,19 @@ class FleetManager:
         view = nx.subgraph_view(self.warehouse_map.graph, filter_node=valid_node)
         
         def return_weight(u, v, d):
-            target_y = config.GRID_HEIGHT - 2
-            max_x = config.GRID_WIDTH - 1
-            if (u[0] == 0 or u[0] == max_x or u[1] == 0 or u[1] == target_y) and \
-               (v[0] == 0 or v[0] == max_x or v[1] == 0 or v[1] == target_y):
-                return 1
-            return 5
+            base_weight = 1
+            if use_peripheral_weight:
+                target_y = config.GRID_HEIGHT - 2
+                max_x = config.GRID_WIDTH - 1
+                if not ((u[0] == 0 or u[0] == max_x or u[1] == 0 or u[1] == target_y) and \
+                   (v[0] == 0 or v[0] == max_x or v[1] == 0 or v[1] == target_y)):
+                    base_weight = 5
             
-        weight_func = return_weight if use_peripheral_weight else None
+            if v in high_cost_nodes:
+                return base_weight + 50
+            return base_weight
+            
+        weight_func = return_weight
         
         try:
             path = nx.astar_path(view, robot.grid_pos, target_node, 
@@ -162,16 +173,10 @@ class FleetManager:
             needs_to_wait = False
             for r2 in self.robots:
                 if r1.robot_id == r2.robot_id: continue
+                # Physical collision ahead
                 if r1.next_node == r2.grid_pos:
                     needs_to_wait = True
-                    if r2.state in (RobotState.MOVING, RobotState.RETURNING) and r2.next_node == r1.grid_pos:
-                        if r1.robot_id > r2.robot_id:
-                            r1.state = RobotState.IDLE
-                            r1.next_node = None
-                            if not r1.was_blocked:
-                                self.conflicts_avoided += 1
-                            needs_to_wait = False
-                            break
+                # Yield to higher priority if racing for same node
                 elif r2.state in (RobotState.MOVING, RobotState.RETURNING) and r1.next_node == r2.next_node:
                     if r1.robot_id > r2.robot_id:
                         needs_to_wait = True

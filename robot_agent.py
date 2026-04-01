@@ -39,6 +39,7 @@ class RobotAgent:
         
         self.is_blocked = False
         self.was_blocked = False
+        self.blocked_timer = 0
         
         # simulated time to load/unload a package
         self.loading_timer = 0
@@ -97,8 +98,16 @@ class RobotAgent:
         # Both MOVING and RETURNING behave similarly for movement
         elif self.state in (RobotState.MOVING, RobotState.RETURNING):
             if self.is_blocked:
+                self.blocked_timer += 1
+                if self.blocked_timer > 20:
+                    self.path.clear()
+                    self.next_node = None
+                    self.blocked_timer = 0
+                    self.state = RobotState.IDLE
                 self.update_color_aesthetic()
                 return
+            else:
+                self.blocked_timer = 0
                 
             if self.next_node is None:
                 self.update_color_aesthetic()
