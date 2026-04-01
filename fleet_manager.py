@@ -14,8 +14,8 @@ class FleetManager:
         self.auto_mode = True
         self.active_limit = config.NUM_ROBOTS
         
-        for i in range(min(config.NUM_ROBOTS, len(config.CHARGING_STATIONS))):
-            station_pos = config.CHARGING_STATIONS[i]
+        for i in range(len(config.MAP_CHARGERS)):
+            station_pos = config.MAP_CHARGERS[i]
             r = RobotAgent(i, station_pos)
             r.state = RobotState.CHARGING
             self.robots.append(r)
@@ -86,7 +86,8 @@ class FleetManager:
                         robot.state = RobotState.CHARGING
                     continue
 
-                if robot.grid_pos == config.UNLOADING_ZONE_IN:
+                current_drop = next((d for d in config.MAP_DROPS if robot.grid_pos == d['in']), None)
+                if current_drop:
                     # Unload all inventory
                     if robot.inventory:
                         for item in robot.inventory:
@@ -94,7 +95,7 @@ class FleetManager:
                         robot.inventory.clear()
                         robot.current_weight = 0
                     
-                    path = self.get_path(robot, config.UNLOADING_ZONE_OUT)
+                    path = self.get_path(robot, current_drop['out'])
                     if path and len(path) > 0:
                         if path[0] == robot.grid_pos: path.pop(0)
                         if len(path) > 0:
@@ -121,7 +122,8 @@ class FleetManager:
                     continue
                     
                 if robot.inventory and not robot.assigned_tasks:
-                    path = self.get_path(robot, config.UNLOADING_ZONE_IN)
+                    target_in = robot.inventory[0].target_drop['in'] if robot.inventory[0].target_drop else config.MAP_DROPS[0]['in']
+                    path = self.get_path(robot, target_in)
                     if path and len(path) > 0:
                         if path[0] == robot.grid_pos: path.pop(0)
                         if len(path) > 0:
@@ -131,8 +133,9 @@ class FleetManager:
 
                 if pending_tasks and not robot.assigned_tasks and not robot.inventory:
                     available_cap = config.ROBOT_MAX_CAPACITY
+                    target_drop = pending_tasks[0].target_drop
                     for task in list(pending_tasks):
-                        if task.weight <= available_cap:
+                        if task.weight <= available_cap and task.target_drop == target_drop:
                             robot.assigned_tasks.append(task)
                             pending_tasks.remove(task)
                             available_cap -= task.weight

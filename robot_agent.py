@@ -136,7 +136,7 @@ class RobotAgent:
                     if self.state == RobotState.RETURNING:
                         # Reached charging station
                         self.state = RobotState.CHARGING
-                    elif self.grid_pos == config.UNLOADING_ZONE_IN:
+                    elif any(self.grid_pos == drop['in'] for drop in config.MAP_DROPS):
                         # Reached unloading zone. 
                         # Dropping off is handled by FleetManager so it can track order completions.
                         self.state = RobotState.IDLE

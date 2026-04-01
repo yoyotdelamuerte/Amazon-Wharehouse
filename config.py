@@ -11,16 +11,14 @@ GRID_HEIGHT = 20
 NUM_SHELVES = 40  # Number of shelves to place as obstacles
 
 # Locations
-UNLOADING_ZONE_IN = (0, 0)   # Where robots drop off packages
-UNLOADING_ZONE_OUT = (1, 0)  # Where robots exit to avoid blocking the entrance
-
-# Charging Zones (5 spots along the top wall)
-CHARGING_STATIONS = [(2, 19), (6, 19), (10, 19), (14, 19), (18, 19)]
+MAP_SHELVES = {}
+MAP_DROPS = []
+MAP_CHARGERS = []
 
 # ==========================================
 # 2. Robot Fleet Settings
 # ==========================================
-NUM_ROBOTS = 5           # Exact number dictated by charging stations
+NUM_ROBOTS = 5           # Dynamically set based on MAP_CHARGERS length
 ROBOT_BASE_SPEED = 6.0   # Movement speed in grid units per second (visual)
 ROBOT_MAX_SPEED = 12.0   # Maximum speed AI can set
 ROBOT_MIN_SPEED = 2.0    # Minimum speed AI can set
