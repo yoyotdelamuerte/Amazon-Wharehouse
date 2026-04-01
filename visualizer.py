@@ -32,24 +32,25 @@ class WarehouseVisualizer:
         self.plotter.add_mesh(ground, color=config.COLOR_GROUND, show_edges=True, edge_color=config.COLOR_GROUND_EDGE)
         
         # 2. Unloading Zones
-        unload_in = pv.Cube(
-            center=(config.UNLOADING_ZONE_IN[0], config.UNLOADING_ZONE_IN[1], -0.05), 
-            x_length=1.0, y_length=1.0, z_length=0.1
-        )
-        self.plotter.add_mesh(unload_in, color=config.COLOR_UNLOAD_IN) # Red for Drop-off IN
-        
-        unload_out = pv.Cube(
-            center=(config.UNLOADING_ZONE_OUT[0], config.UNLOADING_ZONE_OUT[1], -0.05), 
-            x_length=1.0, y_length=1.0, z_length=0.1
-        )
-        self.plotter.add_mesh(unload_out, color=config.COLOR_UNLOAD_OUT) # Light blue for Exit OUT
+        for drop in config.MAP_DROPS:
+            unload_in = pv.Cube(
+                center=(drop['in'][0], drop['in'][1], -0.05), 
+                x_length=1.0, y_length=1.0, z_length=0.1
+            )
+            self.plotter.add_mesh(unload_in, color=config.COLOR_UNLOAD_IN) # Red for Drop-off IN
+            
+            unload_out = pv.Cube(
+                center=(drop['out'][0], drop['out'][1], -0.05), 
+                x_length=1.0, y_length=1.0, z_length=0.1
+            )
+            self.plotter.add_mesh(unload_out, color=config.COLOR_UNLOAD_OUT) # Light blue for Exit OUT
 
         # 2.5 Charging Stations
         charge_pad_mesh = pv.Cube(
             center=(0, 0, -0.05), 
             x_length=1.0, y_length=1.0, z_length=0.1
         )
-        for pad_pos in config.CHARGING_STATIONS:
+        for pad_pos in config.MAP_CHARGERS:
             moved_pad = charge_pad_mesh.copy()
             moved_pad.translate((pad_pos[0], pad_pos[1], 0), inplace=True)
             self.plotter.add_mesh(moved_pad, color=config.COLOR_CHARGING_PAD)

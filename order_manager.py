@@ -2,12 +2,13 @@ import random
 import config
 
 class OrderItem:
-    def __init__(self, order_id, category, weight, shelf_pos, priority):
+    def __init__(self, order_id, category, weight, shelf_pos, priority, target_drop):
         self.order_id = order_id
         self.category = category
         self.weight = weight
         self.shelf_pos = shelf_pos
         self.priority = priority
+        self.target_drop = target_drop
         self.picked_up = False
         self.delivered = False
 
@@ -39,11 +40,15 @@ class OrderManager:
         self.completed_count = 0
         self.late_count = 0
         self.tick_count = 0
+        self.spawn_chance = config.ORDER_SPAWN_CHANCE
         
     def generate_random_order(self):
         order = Order()
         order.time_created = self.tick_count
         num_items = random.randint(1, config.ORDER_MAX_ITEMS)
+        
+        target_drop = random.choice(config.MAP_DROPS) if config.MAP_DROPS else None
+        order.target_dropoff = target_drop
         
         for _ in range(num_items):
             cat = random.choice([config.CATEGORY_LIGHT, config.CATEGORY_MEDIUM, config.CATEGORY_HEAVY])
@@ -54,7 +59,7 @@ class OrderManager:
                 return # Cannot fulfill if a category has no shelves
                 
             shelf_pos = random.choice(valid_shelves)
-            item = OrderItem(order.order_id, cat, weight, shelf_pos, order.priority)
+            item = OrderItem(order.order_id, cat, weight, shelf_pos, order.priority, target_drop)
             order.items.append(item)
             
         self.active_orders.append(order)
@@ -64,7 +69,7 @@ class OrderManager:
     def update(self):
         self.tick_count += 1
         
-        if random.random() < config.ORDER_SPAWN_CHANCE:
+        if random.random() < self.spawn_chance:
             self.generate_random_order()
             
         # Update timers and check completion

@@ -18,75 +18,46 @@ class WarehouseMap:
         
         self.shelves = set()
         self.shelf_categories = {}
-        self.generate_shelves()
+        self.load_shelves()
         self.enforce_one_way_lanes()
         self.create_charging_bays()
 
     def create_charging_bays(self):
         """
-        Removes horizontal edges on the top row (y=19) to turn charging stations
-        into isolated parking bays natively bypassed by the A* algorithm.
+        Removes edges between adjacent charging stations so robots don't drive
+        through one station to get to another.
         """
-        top_y = self.height - 1
-        for x in range(self.width - 1):
-            if self.graph.has_edge((x, top_y), (x+1, top_y)):
-                self.graph.remove_edge((x, top_y), (x+1, top_y))
-            if self.graph.has_edge((x+1, top_y), (x, top_y)):
-                self.graph.remove_edge((x+1, top_y), (x, top_y))
+        chargers = config.MAP_CHARGERS
+        for i in range(len(chargers)):
+            for j in range(i + 1, len(chargers)):
+                c1, c2 = chargers[i], chargers[j]
+                if self.graph.has_edge(c1, c2):
+                    self.graph.remove_edge(c1, c2)
+                if self.graph.has_edge(c2, c1):
+                    self.graph.remove_edge(c2, c1)
 
     def enforce_one_way_lanes(self):
         """
-        Creates one-way entry and exit lanes for the unloading zones
-        to prevent deadlock.
+        Creates one-way constraints for the unloading zones to prevent deadlock.
+        Forces the IN node to only lead to the OUT node, and prevents returning.
         """
-        # Arrival (entry) lane: only allow DOWN movement on x=0 for y<=3
-        for y in range(0, 4):
-            if self.graph.has_edge((0, y), (0, y+1)):
-                self.graph.remove_edge((0, y), (0, y+1)) # Remove UP
+        for drop in config.MAP_DROPS:
+            d_in = drop['in']
+            d_out = drop['out']
             
-            # Prevent entering the lane from the side anywhere below y=3
-            if y < 3 and self.graph.has_edge((1, y), (0, y)):
-                self.graph.remove_edge((1, y), (0, y))
-
-        # Exit lane: only allow UP movement on x=1 for y<=3
-        for y in range(0, 4):
-            if self.graph.has_edge((1, y+1), (1, y)):
-                self.graph.remove_edge((1, y+1), (1, y)) # Remove DOWN
-                
-            # Prevent exiting the lane to the side prematurely
-            if y < 3 and self.graph.has_edge((1, y), (2, y)):
-                self.graph.remove_edge((1, y), (2, y))
-                
-        # Link IN to OUT specifically (only 1-way)
-        if self.graph.has_edge(config.UNLOADING_ZONE_OUT, config.UNLOADING_ZONE_IN):
-            self.graph.remove_edge(config.UNLOADING_ZONE_OUT, config.UNLOADING_ZONE_IN)
+            # Prevent going from OUT back to IN
+            if self.graph.has_edge(d_out, d_in):
+                self.graph.remove_edge(d_out, d_in)
         
-    def generate_shelves(self):
+    def load_shelves(self):
         """
-        Creates clusters or rows of shelves ensuring there are aisles available
-        for robots to navigate between them.
+        Loads shelves from the configured map data and removes their nodes
+        from the navigation graph so robots go around them.
         """
-        possible_shelves = []
-        # Create vertical rows with 2-wide aisles in between, leaving space near borders
-        for x in range(2, self.width - 2, 4):
-            for y in range(2, self.height - 2):
-                possible_shelves.append((x, y))
-                possible_shelves.append((x + 1, y))
-                
-        # Randomly select a subset of these to be shelves based on config
-        random.shuffle(possible_shelves)
-        self.shelves = set(possible_shelves[:config.NUM_SHELVES])
+        self.shelf_categories = config.MAP_SHELVES.copy()
+        self.shelves = set(self.shelf_categories.keys())
         
-        # Ensure the unloading zones are never blocked by a shelf
-        if config.UNLOADING_ZONE_IN in self.shelves:
-            self.shelves.remove(config.UNLOADING_ZONE_IN)
-        if config.UNLOADING_ZONE_OUT in self.shelves:
-            self.shelves.remove(config.UNLOADING_ZONE_OUT)
-            
-        # Assign categories to shelves and remove nodes from nav graph
-        categories = [config.CATEGORY_LIGHT, config.CATEGORY_MEDIUM, config.CATEGORY_HEAVY]
         for shelf in self.shelves:
-            self.shelf_categories[shelf] = random.choice(categories)
             if shelf in self.graph:
                 self.graph.remove_node(shelf)
                 
