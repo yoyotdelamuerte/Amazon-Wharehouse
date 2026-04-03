@@ -1,5 +1,6 @@
 import sys
 import json
+import random
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QGridLayout, 
                              QPushButton, QVBoxLayout, QHBoxLayout, QLabel, 
                              QMessageBox, QFileDialog, QButtonGroup, QRadioButton)
@@ -66,6 +67,10 @@ class MapEditor(QMainWindow):
         btn_load = QPushButton("📁 Charger (JSON)")
         btn_load.clicked.connect(self.load_map)
         tools_layout.addWidget(btn_load)
+        
+        btn_random = QPushButton("🎲 Générer Aléatoirement")
+        btn_random.clicked.connect(self.generate_random_map)
+        tools_layout.addWidget(btn_random)
         
         tools_layout.addStretch()
         
@@ -196,6 +201,49 @@ class MapEditor(QMainWindow):
                         self.update_btn_style(x, y)
             except Exception as e:
                 QMessageBox.critical(self, "Erreur", f"Erreur de lecture: {e}")
+
+    def generate_random_map(self):
+        # 1. Reset map
+        for pos, cell in self.cells.items():
+            cell['type'] = 'floor'
+            cell['category'] = None
+
+        # 2. Add chargers
+        num_chargers = random.randint(3, 7)
+        charger_y = 0
+        start_x = random.randint(1, self.grid_width - num_chargers - 2)
+        for i in range(num_chargers):
+            self.cells[(start_x + i, charger_y)]['type'] = 'charger'
+
+        # 3. Add drops
+        num_drops = random.randint(1, 3)
+        drop_x = self.grid_width - 1
+        start_y = random.randint(2, self.grid_height - num_drops * 3 - 2)
+        for i in range(num_drops):
+            y_pos = start_y + i * 3
+            self.cells[(drop_x, y_pos)]['type'] = 'drop_in'
+            self.cells[(drop_x, y_pos + 1)]['type'] = 'drop_out'
+
+        # 4. Add shelves
+        shelf_categories = [config.CATEGORY_LIGHT, config.CATEGORY_MEDIUM, config.CATEGORY_HEAVY]
+        
+        for y in range(3, self.grid_height - 2):
+            if y % 5 == 0:
+                continue # horizontal aisle
+            for x in range(1, self.grid_width - 3):
+                if x % 3 == 0:
+                    continue # vertical aisle
+                
+                # 80% chance for a shelf
+                if random.random() < 0.8:
+                    self.cells[(x, y)]['type'] = 'shelf'
+                    self.cells[(x, y)]['category'] = random.choice(shelf_categories)
+
+        # 5. Update UI
+        for x in range(self.grid_width):
+            for y in range(self.grid_height):
+                self.update_btn_style(x, y)
+                
                 
     def validate_and_launch(self):
         data = self.get_map_data()
